@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE project>
+<!-- ====================================================================== 
+     Black Rook RookScript-Desktop Build File
+     Matt Tropiano
+     ====================================================================== -->
+<project name="build" default="jar">
+
+	<description>Black Rook RookScript</description>
+
+	<property file="build.properties" />
+
+	<!-- Dependencies -->
+	<property name="dev.base" value=".." />
+	<property name="S" value="${path.separator}" />
+
+	<!-- Project Libs -->
+	
+	<!-- Project Info -->
+	<property name="project.archive" value="blackrook-rookscript" />
+	<property name="project.javadoc.title" value="Black Rook RookScript" />
+	<property name="project.classpath" value=""/>
+	<property name="project.compiler.bootclasspath" value="" />
+	<property name="project.testclass" value=""/>
+	<property name="project.testclass.main" value=""/>
+	<property name="project.javadoc.packages" value="
+		com.blackrook.rookscript,
+		"
+	/>
+	
+	<import file="build-dependencies.xml" />
+	<import file="build-import.xml" />
+
+	<target name="dependency.rookscript">
+		<github-dl repository="BlackRookSoftware/RookScript" tag="${rookscript.tag}" file="${rookscript.jar}" dest="${dependencies.dir}" />
+		<github-dl repository="BlackRookSoftware/RookScript" tag="${rookscript.tag}" file="${rookscript.jar.src}" dest="${dependencies.dir}" />
+	</target>
+	
+	<target name="dependencies" depends="init.dependencies, dependency.rookscript, dependency.properties" description="Downloads and compiles the dependencies.">
+	</target>
+
+	<target name="javadoc" depends="init.docs" description="Builds the documentation.">
+        <javadoc access="protected" 
+        	additionalparam="-J-Xmx512m  " author="true" 
+        	classpath="${bin.dir}" 
+        	doctitle="${project.javadoc.title}" 
+        	sourcepath="${src.dir}" 
+        	packagenames="${project.javadoc.packages}"
+        	destdir="${docs.dir}" 
+        	splitindex="true" 
+        	use="true" 
+        	version="true" 
+        	nodeprecated="false" 
+        	nodeprecatedlist="false" 
+        	noindex="false" 
+        	nonavbar="false" 
+        	notree="false"
+    		>
+            <link href="https://docs.oracle.com/en/java/javase/11/docs/api/"/>
+        </javadoc>
+    </target>	
+
+</project>
