@@ -205,7 +205,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					type(Type.OBJECTREF, "File", "The file, if [destination] is a File."),
 					type(Type.OBJECTREF, "OutputStream", "The stream, if [destination] is an OutputStream."),
 					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
-					type(Type.ERROR, "BadFormat", "If the [type] is not a valid type."),
+					type(Type.ERROR, "BadFormat", "If the [type] is not a valid type, nor inferred by output."),
 					type(Type.ERROR, "IOError", "If the stream could not be written to.")
 				)
 			;
@@ -236,9 +236,25 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				else if (dest.isObjectType(File.class))
 				{
+					int x = 0;
+					File file = dest.asObjectType(File.class);
+					String fileName = file.getPath();
+					if (type == null)
+					{
+						if ((x = fileName.lastIndexOf('.')) < 0)
+						{
+							returnValue.setError("BadFormat", "Image was not written - no format provided or inferrable.");
+							return true;
+						}
+						else
+						{
+							type = fileName.substring(x + 1);
+						}
+					}
+					
 					try {
-						if (!ImageIO.write(image, type, temp.asObjectType(File.class)))
-							returnValue.setError("BadFormat", "File was not written - no appropriate writer for format: " + type);
+						if (!ImageIO.write(image, type, file))
+							returnValue.setError("BadFormat", "Image was not written - no appropriate writer for format: " + type);
 						else
 							returnValue.set(temp);
 					} catch (IOException e) {
@@ -248,9 +264,15 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				else if (dest.isObjectType(OutputStream.class))
 				{
+					if (type == null)
+					{
+						returnValue.setError("BadFormat", "Image was not written - no format provided.");
+						return true;
+					}
+					
 					try {
 						if (!ImageIO.write(image, type, temp.asObjectType(OutputStream.class)))
-							returnValue.setError("BadFormat", "File was not written - no appropriate writer for format: " + type);
+							returnValue.setError("BadFormat", "Image was not written - no appropriate writer for format: " + type);
 						else
 							returnValue.set(temp);
 					} catch (IOException e) {
@@ -260,9 +282,24 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				else
 				{
+					int x = 0;
+					String fileName = dest.asString();
+					if (type == null)
+					{
+						if ((x = fileName.lastIndexOf('.')) < 0)
+						{
+							returnValue.setError("BadFormat", "Image was not written - no format provided or inferrable.");
+							return true;
+						}
+						else
+						{
+							type = fileName.substring(x + 1);
+						}
+					}
+					
 					try {
-						if (!ImageIO.write(image, type, temp.asObjectType(OutputStream.class)))
-							returnValue.setError("BadFormat", "File was not written - no appropriate writer for format: " + type);
+						if (!ImageIO.write(image, type, new File(fileName)))
+							returnValue.setError("BadFormat", "Image was not written - no appropriate writer for format: " + type);
 						else
 							returnValue.set(temp);
 					} catch (IOException e) {
@@ -291,7 +328,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					type(Type.OBJECTREF, "BufferedImage", "The image to copy.")
 				)
 				.returns(
-					type(Type.OBJECTREF, "BufferedImage", "The new image."),
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is a copy of [image]."),
 					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage.")
 				)
 			;
@@ -311,13 +348,10 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				
 				BufferedImage image = temp.asObjectType(BufferedImage.class);
-				BufferedImage copy = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
-
-				Graphics2D g = copy.createGraphics();
-				g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
-				g.dispose();
-				
-				returnValue.set(copy);
+				ColorModel cm = image.getColorModel();
+			    boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+			    WritableRaster raster = image.copyData(image.getRaster().createCompatibleWritableRaster());
+				returnValue.set(new BufferedImage(cm, raster, isAlphaPremultiplied, null));
 				return true;
 			}
 			finally
@@ -339,20 +373,20 @@ public enum ImageFunctions implements ScriptFunctionType
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
 				)
-				.parameter("mode", 
-					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
-					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
-				)
 				.parameter("width", 
 					type(Type.INTEGER, "New width in pixels.")
 				)
 				.parameter("height", 
 					type(Type.INTEGER, "New height in pixels.")
 				)
+				.parameter("mode", 
+					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
+					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
+				)
 				.returns(
-					type(Type.OBJECTREF, "BufferedImage", "[image]"),
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image] with the resized dimensions."),
 					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
-					type(Type.ERROR, "BadMode", "If the second parameter is an unsupported mode."),
+					type(Type.ERROR, "BadMode", "If the provided [mode] is an unsupported mode."),
 					type(Type.ERROR, "BadDimensions", "If width or height is 0 or less.")
 				)
 			;
@@ -365,11 +399,11 @@ public enum ImageFunctions implements ScriptFunctionType
 			try
 			{
 				scriptInstance.popStackValue(temp);
+				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
+				scriptInstance.popStackValue(temp);
 				int height = temp.asInt();
 				scriptInstance.popStackValue(temp);
 				int width = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
 				scriptInstance.popStackValue(temp);
 				if (!temp.isObjectType(BufferedImage.class))
 				{
@@ -378,7 +412,7 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				if (mode == null)
 				{
-					returnValue.setError("BadMode", "Mode is unsupported. Must be: 'nearest', 'linear', 'bilinear', 'bicubic'");
+					returnValue.setError("BadMode", "Resize mode is unsupported. Must be: 'nearest', 'linear', 'bilinear', 'bicubic'");
 					return true;
 				}
 				if (width < 1)
@@ -386,7 +420,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					returnValue.setError("BadDimensions", "Width is less than 1.");
 					return true;
 				}
-				else if (height < 1)
+				if (height < 1)
 				{
 					returnValue.setError("BadDimensions", "Height is less than 1.");
 					return true;
@@ -421,20 +455,20 @@ public enum ImageFunctions implements ScriptFunctionType
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
 				)
-				.parameter("mode", 
-					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
-					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
-				)
 				.parameter("scaleX", 
 					type(Type.INTEGER, "Scalar value, X-axis.")
 				)
 				.parameter("scaleY", 
 					type(Type.INTEGER, "Scalar value, Y-axis.")
 				)
+				.parameter("mode", 
+					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
+					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
+				)
 				.returns(
-					type(Type.OBJECTREF, "BufferedImage", "[image]"),
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image] with the scaled dimensions."),
 					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
-					type(Type.ERROR, "BadMode", "If the second parameter is an unsupported mode."),
+					type(Type.ERROR, "BadMode", "If the fourth parameter is an unsupported mode."),
 					type(Type.ERROR, "BadDimensions", "If width or height will be 0 or less.")
 				)
 			;
@@ -447,11 +481,11 @@ public enum ImageFunctions implements ScriptFunctionType
 			try
 			{
 				scriptInstance.popStackValue(temp);
+				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
+				scriptInstance.popStackValue(temp);
 				double scaleY = temp.asDouble();
 				scriptInstance.popStackValue(temp);
 				double scaleX = temp.asDouble();
-				scriptInstance.popStackValue(temp);
-				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
 				scriptInstance.popStackValue(temp);
 				if (!temp.isObjectType(BufferedImage.class))
 				{
@@ -460,7 +494,7 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				if (mode == null)
 				{
-					returnValue.setError("BadMode", "Mode is unsupported. Must be: 'nearest', 'linear', 'bilinear', 'bicubic'");
+					returnValue.setError("BadMode", "Resize mode is unsupported. Must be: 'nearest', 'linear', 'bilinear', 'bicubic'");
 					return true;
 				}
 				
@@ -474,7 +508,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					returnValue.setError("BadDimensions", "Width is less than 1.");
 					return true;
 				}
-				else if (height < 1)
+				if (height < 1)
 				{
 					returnValue.setError("BadDimensions", "Height is less than 1.");
 					return true;
@@ -515,13 +549,13 @@ public enum ImageFunctions implements ScriptFunctionType
 					type(Type.INTEGER, "Y-axis offset in pixels (from top of image).")
 				)
 				.parameter("width", 
-					type(Type.INTEGER, "Width in pixels.")
+					type(Type.INTEGER, "Width of crop area in pixels.")
 				)
 				.parameter("height", 
-					type(Type.INTEGER, "Height in pixels.")
+					type(Type.INTEGER, "Height of crop area in pixels.")
 				)
 				.returns(
-					type(Type.OBJECTREF, "BufferedImage", "[image]"),
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image] with the cropped dimensions."),
 					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
 					type(Type.ERROR, "BadDimensions", "If width or height is 0 or less.")
 				)
@@ -553,7 +587,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					returnValue.setError("BadDimensions", "Width is less than 1.");
 					return true;
 				}
-				else if (height < 1)
+				if (height < 1)
 				{
 					returnValue.setError("BadDimensions", "Height is less than 1.");
 					return true;
@@ -628,7 +662,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		}
 	}, 
 	
-	IMAGEPAINT(2)
+	IMAGEPAINT(9)
 	{
 		@Override
 		protected Usage usage()
@@ -643,25 +677,40 @@ public enum ImageFunctions implements ScriptFunctionType
 				.parameter("sourceImage", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to paint.")
 				)
-				.parameter("blend", 
-					type(Type.NULL, "Use alpha compositing ('alpha')."),
-					type(Type.STRING, "A blending mode: 'alpha', 'add', 'subtract', 'multiply'.")
-				)
 				.parameter("x", 
+					type(Type.NULL, "Use 0."),
 					type(Type.INTEGER, "X-axis offset in pixels (from left side of image).")
 				)
 				.parameter("y", 
+					type(Type.NULL, "Use 0."),
 					type(Type.INTEGER, "Y-axis offset in pixels (from top of image).")
 				)
 				.parameter("width", 
+					type(Type.NULL, "Use source image width."),
 					type(Type.INTEGER, "Width in pixels.")
 				)
 				.parameter("height", 
+					type(Type.NULL, "Use source image height."),
 					type(Type.INTEGER, "Height in pixels.")
+				)
+				.parameter("mode", 
+					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
+					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
+				)
+				.parameter("blend", 
+					type(Type.NULL, "Use replace compositing ('replace')."),
+					type(Type.STRING, "A blending mode: 'replace', 'alpha', 'add', 'subtract', 'multiply'.")
+				)
+				.parameter("alpha", 
+					type(Type.NULL, "Use 1.0."),
+					type(Type.FLOAT, "The pre-alpha scalar (image alpha is also applied).")
 				)
 				.returns(
 					type(Type.OBJECTREF, "BufferedImage", "[image]"),
-					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage.")
+					type(Type.ERROR, "BadImage", "If the first or second parameter is not a BufferedImage."),
+					type(Type.ERROR, "BadMode", "If the provided [mode] is an unsupported mode."),
+					type(Type.ERROR, "BadBlend", "If the provided [blend] is not a valid blend."),
+					type(Type.ERROR, "BadDimensions", "If width or height is 0 or less.")
 				)
 			;
 		}
@@ -674,18 +723,22 @@ public enum ImageFunctions implements ScriptFunctionType
 			try
 			{
 				scriptInstance.popStackValue(temp);
-				int height = temp.asInt();
+				float alpha = temp.isNull() ? 1.0f : temp.asFloat();
 				scriptInstance.popStackValue(temp);
-				int width = temp.asInt();
+				CompositingTypes blend = temp.isNull() ? CompositingTypes.REPLACE : CompositingTypes.VALUES.get(temp.asString());
+				scriptInstance.popStackValue(temp);
+				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
+				scriptInstance.popStackValue(temp);
+				Integer height = temp.isNull() ? null : temp.asInt();
+				scriptInstance.popStackValue(temp);
+				Integer width = temp.isNull() ? null : temp.asInt();
 				scriptInstance.popStackValue(temp);
 				int y = temp.asInt();
 				scriptInstance.popStackValue(temp);
 				int x = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
-
 				scriptInstance.popStackValue(temp2);
 				scriptInstance.popStackValue(temp);
+				
 				if (!temp.isObjectType(BufferedImage.class))
 				{
 					returnValue.setError("BadImage", "First parameter is not an image.");
@@ -698,15 +751,38 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				if (mode == null)
 				{
-					returnValue.setError("BadMode", "Mode is unsupported. Must be: 'nearest', 'linear', 'bilinear', 'bicubic'");
+					returnValue.setError("BadMode", "Resize mode is unsupported. Must be: 'nearest', 'linear', 'bilinear', 'bicubic'");
+					return true;
+				}
+				if (blend == null)
+				{
+					returnValue.setError("BadBlend", "Blend type is unsupported. Must be: 'replace', 'alpha', 'add', 'subtract', 'multiply'.");
+					return true;
+				}
+				
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				BufferedImage sourceImage = temp2.asObjectType(BufferedImage.class);
+				if (width == null)
+					width = sourceImage.getWidth();
+				if (height == null)
+					height = sourceImage.getHeight();
+				
+				if (width < 1)
+				{
+					returnValue.setError("BadDimensions", "Width is less than 1.");
+					return true;
+				}
+				if (height < 1)
+				{
+					returnValue.setError("BadDimensions", "Height is less than 1.");
 					return true;
 				}
 
-				BufferedImage image = temp.asObjectType(BufferedImage.class);
-				BufferedImage sourceImage = temp2.asObjectType(BufferedImage.class);
-
 				Graphics2D g = image.createGraphics();
+				Composite oldComposite = blend.setComposite(g, alpha);
+				mode.setHints(g);
 				g.drawImage(sourceImage, x, y, width, height, null);
+				g.setComposite(oldComposite);
 				g.dispose();
 				
 				returnValue.set(image);
@@ -866,9 +942,9 @@ public enum ImageFunctions implements ScriptFunctionType
 			@Override
 			public void setHints(Graphics2D g)
 			{
-				g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+				g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 				g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
 			}
 		},
 		
@@ -919,13 +995,24 @@ public enum ImageFunctions implements ScriptFunctionType
 	 */
 	public enum CompositingTypes
 	{
+		REPLACE
+		{
+			@Override
+			public Composite setComposite(Graphics2D g, float scalar)
+			{
+				Composite old = g.getComposite();
+				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC));
+				return old;
+			}
+		},
+		
 		ALPHA
 		{
 			@Override
 			public Composite setComposite(Graphics2D g, float scalar)
 			{
 				Composite old = g.getComposite();
-				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_IN, scalar));
+				g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, scalar));
 				return old;
 			}
 		},
@@ -1213,6 +1300,7 @@ public enum ImageFunctions implements ScriptFunctionType
 			super(srcColorModel, dstColorModel, preAlpha);
 		}
 
+		// FIXME: Fix this! Destination alpha is wrong!
 		@Override
 		protected int composePixel(int srcARGB, int incARGB) 
 		{
@@ -1251,6 +1339,7 @@ public enum ImageFunctions implements ScriptFunctionType
 			super(srcColorModel, dstColorModel, preAlpha);
 		}
 
+		// FIXME: Fix this! Destination alpha is wrong!
 		@Override
 		protected int composePixel(int srcARGB, int incARGB) 
 		{
@@ -1289,6 +1378,7 @@ public enum ImageFunctions implements ScriptFunctionType
 			super(srcColorModel, dstColorModel, preAlpha);
 		}
 
+		// FIXME: Fix this! Destination alpha is wrong!
 		@Override
 		protected int composePixel(int srcARGB, int incARGB) 
 		{
