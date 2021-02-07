@@ -256,7 +256,7 @@ public enum ImageFunctions implements ScriptFunctionType
 						if (!ImageIO.write(image, type, file))
 							returnValue.setError("BadFormat", "Image was not written - no appropriate writer for format: " + type);
 						else
-							returnValue.set(temp);
+							returnValue.set(file);
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
 					}
@@ -271,10 +271,11 @@ public enum ImageFunctions implements ScriptFunctionType
 					}
 					
 					try {
-						if (!ImageIO.write(image, type, temp.asObjectType(OutputStream.class)))
+						OutputStream out = temp.asObjectType(OutputStream.class);
+						if (!ImageIO.write(image, type, out))
 							returnValue.setError("BadFormat", "Image was not written - no appropriate writer for format: " + type);
 						else
-							returnValue.set(temp);
+							returnValue.set(out);
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
 					}
@@ -298,10 +299,11 @@ public enum ImageFunctions implements ScriptFunctionType
 					}
 					
 					try {
-						if (!ImageIO.write(image, type, new File(fileName)))
+						File file = new File(fileName);
+						if (!ImageIO.write(image, type, file))
 							returnValue.setError("BadFormat", "Image was not written - no appropriate writer for format: " + type);
 						else
-							returnValue.set(temp);
+							returnValue.set(fileName);
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
 					}
@@ -596,7 +598,7 @@ public enum ImageFunctions implements ScriptFunctionType
 				BufferedImage image = temp.asObjectType(BufferedImage.class);
 				BufferedImage out = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 				Graphics2D g = out.createGraphics();
-				g.drawImage(image, -x, -y, width, height, null);
+				g.drawImage(image, -x, -y, image.getWidth(), image.getHeight(), null);
 				g.dispose();
 				
 				returnValue.set(out);
@@ -978,7 +980,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		 */
 		public abstract void setHints(Graphics2D g);
 		
-		public static final Map<String, ResamplingType> VALUES = new TreeMap<>(String.CASE_INSENSITIVE_ORDER)
+		public static final Map<String, ResamplingType> VALUES = new TreeMap<String, ResamplingType>(String.CASE_INSENSITIVE_ORDER)
 		{
 			private static final long serialVersionUID = -6575715699170949164L;
 			{
@@ -1060,7 +1062,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		 */
 		public abstract Composite setComposite(Graphics2D g, float scalar);
 
-		public static final Map<String, CompositingTypes> VALUES = new TreeMap<>(String.CASE_INSENSITIVE_ORDER)
+		public static final Map<String, CompositingTypes> VALUES = new TreeMap<String, CompositingTypes>(String.CASE_INSENSITIVE_ORDER)
 		{
 			private static final long serialVersionUID = 907874275883556484L;
 			{
@@ -1248,11 +1250,11 @@ public enum ImageFunctions implements ScriptFunctionType
 		
 		/**
 		 * Mixes two pixels together.
-		 * @param srcARGB the existing, "source" ARGB 32-bit integer value.
-		 * @param incARGB the incoming ARGB 32-bit integer value.
+		 * @param srcARGB the incoming ARGB 32-bit integer value.
+		 * @param dstARGB the existing, "source" ARGB 32-bit integer value.
 		 * @return the resultant ARGB value.
 		 */
-		protected abstract int composePixel(int srcARGB, int incARGB);
+		protected abstract int composePixel(int srcARGB, int dstARGB);
 		
 		@Override
 		public void compose(Raster src, Raster dstIn, WritableRaster dstOut)
@@ -1300,31 +1302,30 @@ public enum ImageFunctions implements ScriptFunctionType
 			super(srcColorModel, dstColorModel, preAlpha);
 		}
 
-		// FIXME: Fix this! Destination alpha is wrong!
 		@Override
-		protected int composePixel(int srcARGB, int incARGB) 
+		protected int composePixel(int srcARGB, int dstARGB) 
 		{
 			int srcBlue =  (srcARGB & 0x000000FF);
-			int incBlue =  (incARGB & 0x000000FF);
+			int dstBlue =  (dstARGB & 0x000000FF);
 			int srcGreen = (srcARGB & 0x0000FF00) >>> 8;
-			int incGreen = (incARGB & 0x0000FF00) >>> 8;
+			int dstGreen = (dstARGB & 0x0000FF00) >>> 8;
 			int srcRed =   (srcARGB & 0x00FF0000) >>> 16;
-			int incRed =   (incARGB & 0x00FF0000) >>> 16;
+			int dstRed =   (dstARGB & 0x00FF0000) >>> 16;
 			int srcAlpha = (srcARGB & 0xFF000000) >>> 24;
-			int incAlpha = (incARGB & 0xFF000000) >>> 24;
-			
-			incAlpha = (incAlpha * preAlpha / 255);
+			int dstAlpha = (dstARGB & 0xFF000000) >>> 24;
+
+			srcAlpha = (srcAlpha * preAlpha / 255);
 			
 			// Scale alpha.
-			incBlue =  incBlue  * incAlpha / 255;
-			incGreen = incGreen * incAlpha / 255;
-			incRed =   incRed   * incAlpha / 255;
+			srcBlue =  srcBlue  * srcAlpha / 255;
+			srcGreen = srcGreen * srcAlpha / 255;
+			srcRed =   srcRed   * srcAlpha / 255;
 
 			int outARGB = 0x00000000;
-			outARGB |= Math.min(Math.max(srcBlue  + incBlue,  0x000), 0x0FF);
-			outARGB |= Math.min(Math.max(srcGreen + incGreen, 0x000), 0x0FF) << 8;
-			outARGB |= Math.min(Math.max(srcRed   + incRed,   0x000), 0x0FF) << 16;
-			outARGB |= srcAlpha << 24;
+			outARGB |= Math.min(Math.max(dstBlue  + srcBlue,  0x000), 0x0FF);
+			outARGB |= Math.min(Math.max(dstGreen + srcGreen, 0x000), 0x0FF) << 8;
+			outARGB |= Math.min(Math.max(dstRed   + srcRed,   0x000), 0x0FF) << 16;
+			outARGB |= dstAlpha << 24;
 			return outARGB;
 		}
 	}
@@ -1339,31 +1340,30 @@ public enum ImageFunctions implements ScriptFunctionType
 			super(srcColorModel, dstColorModel, preAlpha);
 		}
 
-		// FIXME: Fix this! Destination alpha is wrong!
 		@Override
-		protected int composePixel(int srcARGB, int incARGB) 
+		protected int composePixel(int srcARGB, int dstARGB) 
 		{
 			int srcBlue =  (srcARGB & 0x000000FF);
-			int incBlue =  (incARGB & 0x000000FF);
+			int dstBlue =  (dstARGB & 0x000000FF);
 			int srcGreen = (srcARGB & 0x0000FF00) >>> 8;
-			int incGreen = (incARGB & 0x0000FF00) >>> 8;
+			int dstGreen = (dstARGB & 0x0000FF00) >>> 8;
 			int srcRed =   (srcARGB & 0x00FF0000) >>> 16;
-			int incRed =   (incARGB & 0x00FF0000) >>> 16;
+			int dstRed =   (dstARGB & 0x00FF0000) >>> 16;
 			int srcAlpha = (srcARGB & 0xFF000000) >>> 24;
-			int incAlpha = (incARGB & 0xFF000000) >>> 24;
-			
-			incAlpha = (incAlpha * preAlpha / 255);
+			int dstAlpha = (dstARGB & 0xFF000000) >>> 24;
+
+			srcAlpha = (srcAlpha * preAlpha / 255);
 			
 			// Scale alpha.
-			incBlue =  incBlue  * incAlpha / 255;
-			incGreen = incGreen * incAlpha / 255;
-			incRed =   incRed   * incAlpha / 255;
+			srcBlue =  srcBlue  * srcAlpha / 255;
+			srcGreen = srcGreen * srcAlpha / 255;
+			srcRed =   srcRed   * srcAlpha / 255;
 
 			int outARGB = 0x00000000;
-			outARGB |= Math.min(Math.max(srcBlue  - incBlue,  0x000), 0x0FF);
-			outARGB |= Math.min(Math.max(srcGreen - incGreen, 0x000), 0x0FF) << 8;
-			outARGB |= Math.min(Math.max(srcRed   - incRed,   0x000), 0x0FF) << 16;
-			outARGB |= srcAlpha << 24;
+			outARGB |= Math.min(Math.max(dstBlue  - srcBlue,  0x000), 0x0FF);
+			outARGB |= Math.min(Math.max(dstGreen - srcGreen, 0x000), 0x0FF) << 8;
+			outARGB |= Math.min(Math.max(dstRed   - srcRed,   0x000), 0x0FF) << 16;
+			outARGB |= dstAlpha << 24;
 			return outARGB;
 		}
 	}
@@ -1378,31 +1378,30 @@ public enum ImageFunctions implements ScriptFunctionType
 			super(srcColorModel, dstColorModel, preAlpha);
 		}
 
-		// FIXME: Fix this! Destination alpha is wrong!
 		@Override
-		protected int composePixel(int srcARGB, int incARGB) 
+		protected int composePixel(int srcARGB, int dstARGB) 
 		{
 			int srcBlue =  (srcARGB & 0x000000FF);
-			int incBlue =  (incARGB & 0x000000FF);
+			int dstBlue =  (dstARGB & 0x000000FF);
 			int srcGreen = (srcARGB & 0x0000FF00) >>> 8;
-			int incGreen = (incARGB & 0x0000FF00) >>> 8;
+			int dstGreen = (dstARGB & 0x0000FF00) >>> 8;
 			int srcRed =   (srcARGB & 0x00FF0000) >>> 16;
-			int incRed =   (incARGB & 0x00FF0000) >>> 16;
+			int dstRed =   (dstARGB & 0x00FF0000) >>> 16;
 			int srcAlpha = (srcARGB & 0xFF000000) >>> 24;
-			int incAlpha = (incARGB & 0xFF000000) >>> 24;
+			int dstAlpha = (dstARGB & 0xFF000000) >>> 24;
 			
-			incAlpha = (incAlpha * preAlpha / 255);
+			srcAlpha = (srcAlpha * preAlpha / 255);
 			
 			// Scale alpha.
-			incBlue =  incBlue  * incAlpha / 255;
-			incGreen = incGreen * incAlpha / 255;
-			incRed =   incRed   * incAlpha / 255;
+			srcBlue =  srcBlue  + ((255 - srcBlue)  * (255 - srcAlpha) / 255);
+			srcGreen = srcGreen + ((255 - srcGreen) * (255 - srcAlpha) / 255);
+			srcRed =   srcRed   + ((255 - srcRed)   * (255 - srcAlpha) / 255);
 
 			int outARGB = 0x00000000;
-			outARGB |= (srcBlue  * incBlue  / 255);
-			outARGB |= (srcGreen * incGreen / 255) << 8;
-			outARGB |= (srcRed   * incRed   / 255) << 16;
-			outARGB |= srcAlpha << 24;
+			outARGB |= (dstBlue  * srcBlue  / 255);
+			outARGB |= (dstGreen * srcGreen / 255) << 8;
+			outARGB |= (dstRed   * srcRed   / 255) << 16;
+			outARGB |= dstAlpha << 24;
 			return outARGB;
 		}
 	}
