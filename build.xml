@@ -15,6 +15,11 @@
 	<property name="S" value="${path.separator}" />
 
 	<!-- Project Libs -->
+	<property name="rookscript.lib.version" value="1.10.2" />
+	<property name="rookscript.tag" value="${rookscript.lib.version}-RELEASE" />
+	<property name="rookscript.project" value="blackrook-rookscript-${rookscript.lib.version}" />	
+	<property name="rookscript.jar" value="${rookscript.project}.jar" />
+	<property name="rookscript.jar.src" value="${rookscript.project}-sources.jar" />
 	
 	<!-- Project Info -->
 	<property name="project.archive" value="blackrook-rookscript" />
@@ -24,7 +29,8 @@
 	<property name="project.testclass" value=""/>
 	<property name="project.testclass.main" value=""/>
 	<property name="project.javadoc.packages" value="
-		com.blackrook.rookscript,
+		com.blackrook.rookscript.desktop,
+		com.blackrook.rookscript.desktop.functions
 		"
 	/>
 	
