@@ -586,12 +586,12 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				if (width < 1)
 				{
-					returnValue.setError("BadDimensions", "Width is less than 1.");
+					returnValue.setError("BadDimensions", "Width is less than 1 or not specified.");
 					return true;
 				}
 				if (height < 1)
 				{
-					returnValue.setError("BadDimensions", "Height is less than 1.");
+					returnValue.setError("BadDimensions", "Height is less than 1 or not specified.");
 					return true;
 				}
 				
@@ -695,17 +695,17 @@ public enum ImageFunctions implements ScriptFunctionType
 					type(Type.NULL, "Use source image height."),
 					type(Type.INTEGER, "Height in pixels.")
 				)
-				.parameter("mode", 
-					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
-					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
-				)
 				.parameter("blend", 
-					type(Type.NULL, "Use replace compositing ('replace')."),
+					type(Type.NULL, "Use alpha compositing ('alpha')."),
 					type(Type.STRING, "A blending mode: 'replace', 'alpha', 'add', 'subtract', 'multiply'.")
 				)
 				.parameter("alpha", 
 					type(Type.NULL, "Use 1.0."),
-					type(Type.FLOAT, "The pre-alpha scalar (image alpha is also applied).")
+					type(Type.FLOAT, "The pre-alpha scalar (image alpha is also applied). NOTE: 'replace' does not use this value.")
+				)
+				.parameter("mode", 
+					type(Type.NULL, "Use Nearest Neighbor ('nearest')."),
+					type(Type.STRING, "A resize mode: 'nearest', 'linear', 'bilinear', 'bicubic'.")
 				)
 				.returns(
 					type(Type.OBJECTREF, "BufferedImage", "[image]"),
@@ -725,11 +725,11 @@ public enum ImageFunctions implements ScriptFunctionType
 			try
 			{
 				scriptInstance.popStackValue(temp);
+				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
+				scriptInstance.popStackValue(temp);
 				float alpha = temp.isNull() ? 1.0f : temp.asFloat();
 				scriptInstance.popStackValue(temp);
-				CompositingTypes blend = temp.isNull() ? CompositingTypes.REPLACE : CompositingTypes.VALUES.get(temp.asString());
-				scriptInstance.popStackValue(temp);
-				ResamplingType mode = temp.isNull() ? ResamplingType.NEAREST : ResamplingType.VALUES.get(temp.asString());
+				CompositingTypes blend = temp.isNull() ? CompositingTypes.ALPHA : CompositingTypes.VALUES.get(temp.asString());
 				scriptInstance.popStackValue(temp);
 				Integer height = temp.isNull() ? null : temp.asInt();
 				scriptInstance.popStackValue(temp);
