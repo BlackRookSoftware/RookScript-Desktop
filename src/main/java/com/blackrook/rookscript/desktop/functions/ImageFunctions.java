@@ -940,7 +940,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Gets an image's pixel data."
+					"Sets an image's pixel data."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
