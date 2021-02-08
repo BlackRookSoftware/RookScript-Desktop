@@ -807,7 +807,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					"Gets the width of an image in pixels."
 				)
 				.parameter("image", 
-					type(Type.INTEGER, "The image to inspect.")
+					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
 				)
 				.returns(
 					type(Type.INTEGER, "The image width."),
@@ -848,7 +848,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					"Gets the height of an image in pixels."
 				)
 				.parameter("image", 
-					type(Type.INTEGER, "The image to inspect.")
+					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
 				)
 				.returns(
 					type(Type.INTEGER, "The image height."),
@@ -870,6 +870,128 @@ public enum ImageFunctions implements ScriptFunctionType
 					return true;
 				}
 				returnValue.set(temp.asObjectType(BufferedImage.class).getHeight());
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	},
+
+	IMAGEGET(3)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Gets an image's pixel data."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
+				)
+				.parameter("x", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image X-coordinate (from left side of image).")
+				)
+				.parameter("y", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image Y-coordinate (from top of image).")
+				)
+				.returns(
+					type(Type.INTEGER, "The image pixel data, 32-bit ARGB."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
+					type(Type.ERROR, "BadCoordinates", "If X or Y is out of bounds.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				int y = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int x = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				returnValue.set(temp.asObjectType(BufferedImage.class).getRGB(x, y));
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	},
+
+	IMAGESET(4)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Gets an image's pixel data."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
+				)
+				.parameter("x", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image X-coordinate (from left side of image).")
+				)
+				.parameter("y", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image Y-coordinate (from top of image).")
+				)
+				.parameter("color", 
+					type(Type.INTEGER, "The color, formatted as a 32-bit ARGB value.")
+				)
+				.returns(
+					type(Type.OBJECTREF, "BufferedImage", "[image]."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
+					type(Type.ERROR, "BadCoordinates", "If X or Y is out of bounds.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				int color = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int y = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int x = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				if (x < 0 || x >= image.getWidth() || y < 0 || y >= image.getHeight())
+				{
+					returnValue.setError("BadCoordinates", "Coordinates are outside image bounds.");
+					return true;
+				}
+				
+				image.setRGB(x, y, color);
+				returnValue.set(image);
 				return true;
 			}
 			finally
