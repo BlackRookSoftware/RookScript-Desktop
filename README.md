@@ -22,7 +22,8 @@ Copyright (c) 2021 Black Rook Software.
 
 ### Introduction
 
-This library contains more RookScript functions that revolve around the Java Desktop module.
+This library contains more RookScript functions that revolve around the Java Desktop module. These involve
+some Desktop toolkit functions and image functions.
 
 
 ### Why?
@@ -38,6 +39,10 @@ The javadocs contain basic outlines of each package's contents.
 
 
 ### Compiling with Ant
+
+To download this project's dependencies (and amend a `build.properties` file):
+
+	ant dependencies
 
 To compile this library with Apache Ant, type:
 
@@ -70,7 +75,7 @@ To clean up everything:
 
 ### Javadocs
 
-Online Javadocs can be found at: [https://blackrooksoftware.github.io/RookScript/javadoc/](https://blackrooksoftware.github.io/RookScript/javadoc/)
+Online Javadocs can be found at: [https://blackrooksoftware.github.io/RookScript/javadoc/Desktop](https://blackrooksoftware.github.io/RookScript/javadoc/Desktop)
 
 
 ### Other

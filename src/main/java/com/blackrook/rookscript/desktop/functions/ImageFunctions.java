@@ -611,6 +611,151 @@ public enum ImageFunctions implements ScriptFunctionType
 		}
 	}, 
 	
+	IMAGEFLIPH(1)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Creates a new image by flipping it horizontally."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to fill.")
+				)
+				.returns(
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], flipped horizontally."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g = out.createGraphics();
+				g.drawImage(image, image.getWidth(), 0, -image.getWidth(), image.getHeight(), null);
+				g.dispose();
+				
+				returnValue.set(out);
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	}, 
+	
+	IMAGEFLIPV(1)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Creates a new image by flipping it vertically."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to fill.")
+				)
+				.returns(
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], flipped vertically."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g = out.createGraphics();
+				g.drawImage(image, 0, image.getHeight(), image.getWidth(), -image.getHeight(), null);
+				g.dispose();
+				
+				returnValue.set(out);
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	}, 
+	
+	IMAGETRANSPOSE(1)
+	{
+		
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Creates a new image by flipping it vertically."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to fill.")
+				)
+				.returns(
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], flipped vertically."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				BufferedImage out = new BufferedImage(image.getHeight(), image.getWidth(), BufferedImage.TYPE_INT_ARGB);
+				for (int x = 0; x < image.getWidth(); x++)
+					for (int y = 0; y < image.getHeight(); y++)
+						out.setRGB(y, x, image.getRGB(x, y));
+				
+				returnValue.set(out);
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	}, 
+	
 	IMAGEFILL(2)
 	{
 		@Override
