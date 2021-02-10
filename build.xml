@@ -6,7 +6,7 @@
      ====================================================================== -->
 <project name="build" default="jar">
 
-	<description>Black Rook RookScript</description>
+	<description>Black Rook RookScript Desktop</description>
 
 	<property file="build.properties" />
 
@@ -22,9 +22,9 @@
 	<property name="rookscript.jar.src" value="${rookscript.project}-sources.jar" />
 	
 	<!-- Project Info -->
-	<property name="project.archive" value="blackrook-rookscript" />
-	<property name="project.javadoc.title" value="Black Rook RookScript" />
-	<property name="project.classpath" value=""/>
+	<property name="project.archive" value="blackrook-rookscript-desktop" />
+	<property name="project.javadoc.title" value="Black Rook RookScript Desktop" />
+	<property name="project.classpath" value="${dev.base}/${rookscript.jar}"/>
 	<property name="project.compiler.bootclasspath" value="" />
 	<property name="project.testclass" value=""/>
 	<property name="project.testclass.main" value=""/>
@@ -48,7 +48,7 @@
 	<target name="javadoc" depends="init.docs" description="Builds the documentation.">
         <javadoc access="protected" 
         	additionalparam="-J-Xmx512m  " author="true" 
-        	classpath="${bin.dir}" 
+        	classpath="${bin.dir}${S}${dev.base}/${rookscript.jar}" 
         	doctitle="${project.javadoc.title}" 
         	sourcepath="${src.dir}" 
         	packagenames="${project.javadoc.packages}"
