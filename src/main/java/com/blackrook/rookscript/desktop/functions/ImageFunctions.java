@@ -196,7 +196,8 @@ public enum ImageFunctions implements ScriptFunctionType
 					type(Type.OBJECTREF, "File", "The path to a target file."),
 					type(Type.OBJECTREF, "OutputStream", "The open stream to write to.")
 				)
-				.parameter("type", 
+				.parameter("type",
+					type(Type.NULL, "Detect from file extension."),
 					type(Type.STRING, "The informal type name.")
 				)
 				.returns(
