@@ -621,7 +621,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					"Creates a new image by flipping it horizontally."
 				)
 				.parameter("image", 
-					type(Type.OBJECTREF, "BufferedImage", "The image to fill.")
+					type(Type.OBJECTREF, "BufferedImage", "The image to flip.")
 				)
 				.returns(
 					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], flipped horizontally."),
@@ -669,7 +669,7 @@ public enum ImageFunctions implements ScriptFunctionType
 					"Creates a new image by flipping it vertically."
 				)
 				.parameter("image", 
-					type(Type.OBJECTREF, "BufferedImage", "The image to fill.")
+					type(Type.OBJECTREF, "BufferedImage", "The image to flip.")
 				)
 				.returns(
 					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], flipped vertically."),
@@ -715,13 +715,13 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image by flipping it vertically."
+					"Creates a new image by transposing its X and Y axes."
 				)
 				.parameter("image", 
-					type(Type.OBJECTREF, "BufferedImage", "The image to fill.")
+					type(Type.OBJECTREF, "BufferedImage", "The image to transpose.")
 				)
 				.returns(
-					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], flipped vertically."),
+					type(Type.OBJECTREF, "BufferedImage", "A new image that is [image], transposed."),
 					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage.")
 				)
 			;
