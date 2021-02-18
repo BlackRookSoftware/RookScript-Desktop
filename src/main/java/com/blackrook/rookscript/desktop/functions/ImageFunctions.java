@@ -993,8 +993,7 @@ public enum ImageFunctions implements ScriptFunctionType
 				.returns(
 					type(Type.OBJECTREF, "BufferedImage", "[image]"),
 					type(Type.ERROR, "BadImage", "If the first or second parameter is not a BufferedImage."),
-					type(Type.ERROR, "BadBlend", "If the provided [blend] is not a valid blend."),
-					type(Type.ERROR, "BadDimensions", "If width or height is 0 or less.")
+					type(Type.ERROR, "BadBlend", "If the provided [blend] is not a valid blend.")
 				)
 			;
 		}
@@ -1010,10 +1009,6 @@ public enum ImageFunctions implements ScriptFunctionType
 				float alpha = temp.isNull() ? 1.0f : temp.asFloat();
 				scriptInstance.popStackValue(temp);
 				CompositingTypes blend = temp.isNull() ? CompositingTypes.ALPHA : CompositingTypes.VALUES.get(temp.asString());
-				scriptInstance.popStackValue(temp);
-				Integer height = temp.isNull() ? null : temp.asInt();
-				scriptInstance.popStackValue(temp);
-				Integer width = temp.isNull() ? null : temp.asInt();
 				scriptInstance.popStackValue(temp);
 				int y = temp.asInt();
 				scriptInstance.popStackValue(temp);
@@ -1039,25 +1034,9 @@ public enum ImageFunctions implements ScriptFunctionType
 				
 				BufferedImage image = temp.asObjectType(BufferedImage.class);
 				BufferedImage sourceImage = temp2.asObjectType(BufferedImage.class);
-				if (width == null)
-					width = sourceImage.getWidth();
-				if (height == null)
-					height = sourceImage.getHeight();
-				
-				if (width < 1)
-				{
-					returnValue.setError("BadDimensions", "Width is less than 1.");
-					return true;
-				}
-				if (height < 1)
-				{
-					returnValue.setError("BadDimensions", "Height is less than 1.");
-					return true;
-				}
-
 				Graphics2D g = image.createGraphics();
 				Composite oldComposite = blend.setComposite(g, alpha);
-				g.drawImage(sourceImage, x, y, width, height, null);
+				g.drawImage(sourceImage, x, y, sourceImage.getWidth(), sourceImage.getHeight(), null);
 				g.setComposite(oldComposite);
 				g.dispose();
 				
