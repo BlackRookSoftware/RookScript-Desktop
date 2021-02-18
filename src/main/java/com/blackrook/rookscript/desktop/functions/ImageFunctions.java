@@ -134,42 +134,57 @@ public enum ImageFunctions implements ScriptFunctionType
 					returnValue.setError("BadImage", "Source is null.");
 					return true;
 				}
-				else if (temp.isObjectType(File.class))
+				
+				BufferedImage image;
+				if (temp.isObjectType(File.class))
 				{
 					try {
-						returnValue.set(ImageIO.read(temp.asObjectType(File.class)));
+						image = ImageIO.read(temp.asObjectType(File.class));
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
+						return true;
 					}
-					return true;
 				}
 				else if (temp.isObjectType(InputStream.class))
 				{
 					try {
-						returnValue.set(ImageIO.read(temp.asObjectType(InputStream.class)));
+						image = ImageIO.read(temp.asObjectType(InputStream.class));
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
+						return true;
 					}
-					return true;
 				}
 				else if (temp.isObjectType(URL.class))
 				{
 					try {
-						returnValue.set(ImageIO.read(temp.asObjectType(URL.class)));
+						image = ImageIO.read(temp.asObjectType(URL.class));
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
+						return true;
 					}
-					return true;
 				}
 				else
 				{
 					try {
-						returnValue.set(ImageIO.read(new File(temp.asString())));
+						image = ImageIO.read(new File(temp.asString()));
 					} catch (IOException e) {
 						returnValue.setError("IOError", e.getMessage(), e.getLocalizedMessage());
+						return true;
 					}
-					return true;
 				}
+				
+				// Test for integer raster. If not, convert (the composites rely on it).
+				if (image.getData().getSampleModel().getDataType() != DataBuffer.TYPE_INT)
+				{
+					BufferedImage converted = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+					Graphics2D g = converted.createGraphics();
+					g.drawImage(image, 0, 0, null);
+					g.dispose();
+					image = converted;
+				}
+				
+				returnValue.set(image);
+				return true;
 			}
 			finally
 			{
@@ -371,7 +386,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image that is a resized version of an image."
+					"Creates a new image that is a resized version of a source image."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
@@ -453,7 +468,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image that is a resized version of an image using scalar values."
+					"Creates a new image that is a resized version of a source image using scalar values."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
@@ -540,7 +555,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image that is a cropped area of an image."
+					"Creates a new image that is a cropped area of a source image."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to inspect.")
@@ -619,7 +634,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image by flipping it horizontally."
+					"Creates a new image by flipping a source image horizontally."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to flip.")
@@ -667,7 +682,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image by flipping it vertically."
+					"Creates a new image by flipping a source image vertically."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to flip.")
@@ -710,13 +725,12 @@ public enum ImageFunctions implements ScriptFunctionType
 	
 	IMAGETRANSPOSE(1)
 	{
-		
 		@Override
 		protected Usage usage()
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Creates a new image by transposing its X and Y axes."
+					"Creates a new image by transposing a source image's X and Y axes."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to transpose.")
@@ -817,7 +831,7 @@ public enum ImageFunctions implements ScriptFunctionType
 		{
 			return ScriptFunctionUsage.create()
 				.instructions(
-					"Fills an image with the provided color."
+					"Paints an image into another image, changing the target image."
 				)
 				.parameter("image", 
 					type(Type.OBJECTREF, "BufferedImage", "The image to paint into.")
@@ -843,9 +857,9 @@ public enum ImageFunctions implements ScriptFunctionType
 				)
 				.parameter("blend", 
 					type(Type.NULL, "Use alpha compositing ('alpha')."),
-					type(Type.STRING, "A blending mode: 'replace', 'alpha', 'add', 'subtract', 'multiply'.")
+					type(Type.STRING, "A blending mode: 'replace', 'alpha', 'add', 'subtract', 'multiply', 'desaturate'.")
 				)
-				.parameter("alpha", 
+				.parameter("prealpha", 
 					type(Type.NULL, "Use 1.0."),
 					type(Type.FLOAT, "The pre-alpha scalar (image alpha is also applied). NOTE: 'replace' does not use this value.")
 				)
@@ -904,7 +918,7 @@ public enum ImageFunctions implements ScriptFunctionType
 				}
 				if (blend == null)
 				{
-					returnValue.setError("BadBlend", "Blend type is unsupported. Must be: 'replace', 'alpha', 'add', 'subtract', 'multiply'.");
+					returnValue.setError("BadBlend", "Blend type is unsupported. Must be: 'replace', 'alpha', 'add', 'subtract', 'multiply', 'desaturate'.");
 					return true;
 				}
 				
@@ -943,6 +957,242 @@ public enum ImageFunctions implements ScriptFunctionType
 		}
 	}, 
 	
+	/** @since 1.10.2.1 */
+	IMAGEDRAW(6)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Paints an image into another image, changing the target image. " +
+					"To contrast with IMAGEPAINT(), this is a convenience function that does not accept resizing parameters."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to paint into.")
+				)
+				.parameter("sourceImage", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to paint.")
+				)
+				.parameter("x", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "X-axis offset in pixels (from left side of image).")
+				)
+				.parameter("y", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Y-axis offset in pixels (from top of image).")
+				)
+				.parameter("blend", 
+					type(Type.NULL, "Use alpha compositing ('alpha')."),
+					type(Type.STRING, "A blending mode: 'replace', 'alpha', 'add', 'subtract', 'multiply', 'desaturate'.")
+				)
+				.parameter("prealpha", 
+					type(Type.NULL, "Use 1.0."),
+					type(Type.FLOAT, "The pre-alpha scalar (image alpha is also applied). NOTE: 'replace' does not use this value.")
+				)
+				.returns(
+					type(Type.OBJECTREF, "BufferedImage", "[image]"),
+					type(Type.ERROR, "BadImage", "If the first or second parameter is not a BufferedImage."),
+					type(Type.ERROR, "BadBlend", "If the provided [blend] is not a valid blend."),
+					type(Type.ERROR, "BadDimensions", "If width or height is 0 or less.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			ScriptValue temp2 = CACHEVALUE2.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				float alpha = temp.isNull() ? 1.0f : temp.asFloat();
+				scriptInstance.popStackValue(temp);
+				CompositingTypes blend = temp.isNull() ? CompositingTypes.ALPHA : CompositingTypes.VALUES.get(temp.asString());
+				scriptInstance.popStackValue(temp);
+				Integer height = temp.isNull() ? null : temp.asInt();
+				scriptInstance.popStackValue(temp);
+				Integer width = temp.isNull() ? null : temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int y = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int x = temp.asInt();
+				scriptInstance.popStackValue(temp2);
+				scriptInstance.popStackValue(temp);
+				
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				if (!temp2.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "Second parameter is not an image.");
+					return true;
+				}
+				if (blend == null)
+				{
+					returnValue.setError("BadBlend", "Blend type is unsupported. Must be: 'replace', 'alpha', 'add', 'subtract', 'multiply', 'desaturate'.");
+					return true;
+				}
+				
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				BufferedImage sourceImage = temp2.asObjectType(BufferedImage.class);
+				if (width == null)
+					width = sourceImage.getWidth();
+				if (height == null)
+					height = sourceImage.getHeight();
+				
+				if (width < 1)
+				{
+					returnValue.setError("BadDimensions", "Width is less than 1.");
+					return true;
+				}
+				if (height < 1)
+				{
+					returnValue.setError("BadDimensions", "Height is less than 1.");
+					return true;
+				}
+
+				Graphics2D g = image.createGraphics();
+				Composite oldComposite = blend.setComposite(g, alpha);
+				g.drawImage(sourceImage, x, y, width, height, null);
+				g.setComposite(oldComposite);
+				g.dispose();
+				
+				returnValue.set(image);
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	}, 
+	
+	IMAGESET(4)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Sets an image's pixel data."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
+				)
+				.parameter("x", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image X-coordinate (from left side of image).")
+				)
+				.parameter("y", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image Y-coordinate (from top of image).")
+				)
+				.parameter("color", 
+					type(Type.INTEGER, "The color, formatted as a 32-bit ARGB value.")
+				)
+				.returns(
+					type(Type.OBJECTREF, "BufferedImage", "[image]."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
+					type(Type.ERROR, "BadCoordinates", "If X or Y is out of bounds.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				int color = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int y = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int x = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				BufferedImage image = temp.asObjectType(BufferedImage.class);
+				if (x < 0 || x >= image.getWidth() || y < 0 || y >= image.getHeight())
+				{
+					returnValue.setError("BadCoordinates", "Coordinates are outside image bounds.");
+					return true;
+				}
+				
+				image.setRGB(x, y, color);
+				returnValue.set(image);
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	},
+
+	IMAGEGET(3)
+	{
+		@Override
+		protected Usage usage()
+		{
+			return ScriptFunctionUsage.create()
+				.instructions(
+					"Gets an image's pixel data."
+				)
+				.parameter("image", 
+					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
+				)
+				.parameter("x", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image X-coordinate (from left side of image).")
+				)
+				.parameter("y", 
+					type(Type.NULL, "Use 0."),
+					type(Type.INTEGER, "Image Y-coordinate (from top of image).")
+				)
+				.returns(
+					type(Type.INTEGER, "The image pixel data, 32-bit ARGB."),
+					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
+					type(Type.ERROR, "BadCoordinates", "If X or Y is out of bounds.")
+				)
+			;
+		}
+		
+		@Override
+		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
+		{
+			ScriptValue temp = CACHEVALUE1.get();
+			try
+			{
+				scriptInstance.popStackValue(temp);
+				int y = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				int x = temp.asInt();
+				scriptInstance.popStackValue(temp);
+				if (!temp.isObjectType(BufferedImage.class))
+				{
+					returnValue.setError("BadImage", "First parameter is not an image.");
+					return true;
+				}
+				returnValue.set(temp.asObjectType(BufferedImage.class).getRGB(x, y));
+				return true;
+			}
+			finally
+			{
+				temp.setNull();
+			}
+		}
+	},
+
 	IMAGEWIDTH(1)
 	{
 		@Override
@@ -1016,128 +1266,6 @@ public enum ImageFunctions implements ScriptFunctionType
 					return true;
 				}
 				returnValue.set(temp.asObjectType(BufferedImage.class).getHeight());
-				return true;
-			}
-			finally
-			{
-				temp.setNull();
-			}
-		}
-	},
-
-	IMAGEGET(3)
-	{
-		@Override
-		protected Usage usage()
-		{
-			return ScriptFunctionUsage.create()
-				.instructions(
-					"Gets an image's pixel data."
-				)
-				.parameter("image", 
-					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
-				)
-				.parameter("x", 
-					type(Type.NULL, "Use 0."),
-					type(Type.INTEGER, "Image X-coordinate (from left side of image).")
-				)
-				.parameter("y", 
-					type(Type.NULL, "Use 0."),
-					type(Type.INTEGER, "Image Y-coordinate (from top of image).")
-				)
-				.returns(
-					type(Type.INTEGER, "The image pixel data, 32-bit ARGB."),
-					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
-					type(Type.ERROR, "BadCoordinates", "If X or Y is out of bounds.")
-				)
-			;
-		}
-		
-		@Override
-		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
-		{
-			ScriptValue temp = CACHEVALUE1.get();
-			try
-			{
-				scriptInstance.popStackValue(temp);
-				int y = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				int x = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				if (!temp.isObjectType(BufferedImage.class))
-				{
-					returnValue.setError("BadImage", "First parameter is not an image.");
-					return true;
-				}
-				returnValue.set(temp.asObjectType(BufferedImage.class).getRGB(x, y));
-				return true;
-			}
-			finally
-			{
-				temp.setNull();
-			}
-		}
-	},
-
-	IMAGESET(4)
-	{
-		@Override
-		protected Usage usage()
-		{
-			return ScriptFunctionUsage.create()
-				.instructions(
-					"Sets an image's pixel data."
-				)
-				.parameter("image", 
-					type(Type.OBJECTREF, "BufferedImage", "The image to use.")
-				)
-				.parameter("x", 
-					type(Type.NULL, "Use 0."),
-					type(Type.INTEGER, "Image X-coordinate (from left side of image).")
-				)
-				.parameter("y", 
-					type(Type.NULL, "Use 0."),
-					type(Type.INTEGER, "Image Y-coordinate (from top of image).")
-				)
-				.parameter("color", 
-					type(Type.INTEGER, "The color, formatted as a 32-bit ARGB value.")
-				)
-				.returns(
-					type(Type.OBJECTREF, "BufferedImage", "[image]."),
-					type(Type.ERROR, "BadImage", "If the first parameter is not a BufferedImage."),
-					type(Type.ERROR, "BadCoordinates", "If X or Y is out of bounds.")
-				)
-			;
-		}
-		
-		@Override
-		public boolean execute(ScriptInstance scriptInstance, ScriptValue returnValue)
-		{
-			ScriptValue temp = CACHEVALUE1.get();
-			try
-			{
-				scriptInstance.popStackValue(temp);
-				int color = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				int y = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				int x = temp.asInt();
-				scriptInstance.popStackValue(temp);
-				
-				if (!temp.isObjectType(BufferedImage.class))
-				{
-					returnValue.setError("BadImage", "First parameter is not an image.");
-					return true;
-				}
-				BufferedImage image = temp.asObjectType(BufferedImage.class);
-				if (x < 0 || x >= image.getWidth() || y < 0 || y >= image.getHeight())
-				{
-					returnValue.setError("BadCoordinates", "Coordinates are outside image bounds.");
-					return true;
-				}
-				
-				image.setRGB(x, y, color);
-				returnValue.set(image);
 				return true;
 			}
 			finally
@@ -1320,6 +1448,18 @@ public enum ImageFunctions implements ScriptFunctionType
 			}
 		},
 		
+		/** @since 1.10.2.1 */
+		DESATURATE
+		{
+			@Override
+			public Composite setComposite(Graphics2D g, float scalar)
+			{
+				Composite old = g.getComposite();
+				g.setComposite(DesaturationComposite.getInstance(scalar));
+				return old;
+			}
+		},
+		
 		;
 		
 		/**
@@ -1473,6 +1613,52 @@ public enum ImageFunctions implements ScriptFunctionType
 		public CompositeContext createContext(ColorModel srcColorModel, ColorModel dstColorModel, RenderingHints hints) 
 		{
 			return new MultiplicativeCompositeContext(srcColorModel, dstColorModel, scalar);
+		}
+		
+	}
+	
+	/**
+	 * A composite that multiplies pixel color together.
+	 * The scalar amount for the multiply per pixel is taken from the alpha component.  
+	 * @since 1.10.2.1
+	 */
+	public static final class DesaturationComposite implements Composite
+	{
+		private static final DesaturationComposite INSTANCE = new DesaturationComposite();
+		
+		private float scalar;
+
+		private DesaturationComposite()
+		{
+			this.scalar = 1f;
+		}
+
+		private DesaturationComposite(float scalar)
+		{
+			this.scalar = scalar;
+		}
+
+		/**
+		 * @return an instance of this composite.
+		 */
+		public static DesaturationComposite getInstance()
+		{
+			return INSTANCE;
+		}
+		
+		/**
+		 * @param scalar the applicative scalar.
+		 * @return an instance of this composite.
+		 */
+		public static DesaturationComposite getInstance(float scalar)
+		{
+			return new DesaturationComposite(scalar);
+		}
+		
+		@Override
+		public CompositeContext createContext(ColorModel srcColorModel, ColorModel dstColorModel, RenderingHints hints) 
+		{
+			return new DesaturationCompositeContext(srcColorModel, dstColorModel, scalar);
 		}
 		
 	}
@@ -1674,4 +1860,45 @@ public enum ImageFunctions implements ScriptFunctionType
 		}
 	}
 
+	/**
+	 * The composite context for {@link DesaturateComposite}s.
+	 * @since 1.10.2.1
+	 */
+	public static class DesaturationCompositeContext extends ARGBCompositeContext
+	{
+		protected DesaturationCompositeContext(ColorModel srcColorModel, ColorModel dstColorModel, float preAlpha)
+		{
+			super(srcColorModel, dstColorModel, preAlpha);
+		}
+
+		@Override
+		protected int composePixel(int srcARGB, int dstARGB) 
+		{
+			int srcRed =   (srcARGB & 0x00FF0000) >>> 16;
+			int srcAlpha = (srcARGB & 0xFF000000) >>> 24;
+
+			int dstBlue =  (dstARGB & 0x000000FF);
+			int dstGreen = (dstARGB & 0x0000FF00) >>> 8;
+			int dstRed =   (dstARGB & 0x00FF0000) >>> 16;
+			int dstAlpha = (dstARGB & 0xFF000000) >>> 24;
+			
+			srcAlpha = (srcAlpha * preAlpha / 255);
+			
+			int dstLum = (dstBlue * 19 / 255) + (dstGreen * 182 / 255) + (dstRed * 54 / 255);
+			int srcDesat = srcRed * srcAlpha / 255;
+			
+			int outARGB = 0x00000000;
+			outARGB |= mix(dstBlue,  dstLum, srcDesat);
+			outARGB |= mix(dstGreen, dstLum, srcDesat) << 8;
+			outARGB |= mix(dstRed,   dstLum, srcDesat) << 16;
+			outARGB |= dstAlpha << 24;
+			return outARGB;
+		}
+
+		private static int mix(int a, int b, int mix)
+		{
+			return (((255 - mix) * a) + (mix * b)) / 255;
+		}
+	}
+	
 }
