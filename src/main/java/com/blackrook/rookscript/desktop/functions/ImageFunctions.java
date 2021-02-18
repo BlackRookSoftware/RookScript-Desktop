@@ -1861,7 +1861,7 @@ public enum ImageFunctions implements ScriptFunctionType
 	}
 
 	/**
-	 * The composite context for {@link DesaturateComposite}s.
+	 * The composite context for {@link DesaturationComposite}s.
 	 * @since 1.10.2.1
 	 */
 	public static class DesaturationCompositeContext extends ARGBCompositeContext
