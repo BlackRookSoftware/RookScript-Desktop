@@ -367,8 +367,8 @@ public enum ImageFunctions implements ScriptFunctionType
 				
 				BufferedImage image = temp.asObjectType(BufferedImage.class);
 				ColorModel cm = image.getColorModel();
-			    boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
-			    WritableRaster raster = image.copyData(image.getRaster().createCompatibleWritableRaster());
+				boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+				WritableRaster raster = image.copyData(image.getRaster().createCompatibleWritableRaster());
 				returnValue.set(new BufferedImage(cm, raster, isAlphaPremultiplied, null));
 				return true;
 			}
@@ -1675,11 +1675,11 @@ public enum ImageFunctions implements ScriptFunctionType
 		 */
 		protected static void checkRaster(ColorModel colorModel, Raster raster) 
 		{
-	        if (!colorModel.isCompatibleRaster(raster))
-	            throw new UnsupportedOperationException("ColorModel is not compatible with raster.");
-	        if (raster.getSampleModel().getDataType() != DataBuffer.TYPE_INT)
-	            throw new UnsupportedOperationException("Expected integer data type from raster.");
-	    }
+			if (!colorModel.isCompatibleRaster(raster))
+				throw new UnsupportedOperationException("ColorModel is not compatible with raster.");
+			if (raster.getSampleModel().getDataType() != DataBuffer.TYPE_INT)
+				throw new UnsupportedOperationException("Expected integer data type from raster.");
+		}
 		
 		/**
 		 * Mixes two pixels together.
