@@ -7,7 +7,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.blackrooksoftware</groupId>
 	<artifactId>rookscript-desktop</artifactId>
-	<version>1.10.2.1</version>
+	<version>1.20.0</version>
 	<name>RookScript-Desktop</name>
 	<description>Extensions to RookScript - functions that require the java.desktop module.</description>
 	<url>https://blackrooksoftware.github.io/RookScript/</url>
@@ -49,7 +49,7 @@
 		<dependency>
 			<groupId>com.blackrooksoftware</groupId>
 			<artifactId>rookscript</artifactId>
-			<version>1.19.0</version>
+			<version>1.20.0</version>
 		</dependency>
 
 		<dependency>
